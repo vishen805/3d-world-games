@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valheim-Style Survival Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="ui">
+            <div id="survivalStats">
+                <div id="health">Health: 100/100</div>
+                <div id="hunger">Hunger: 100/100</div>
+                <div id="stamina">Stamina: 100/100</div>
+            </div>
+            <div id="inventory">
+                <div id="inventoryTitle">Inventory</div>
+                <div id="wood">Wood: 0</div>
+                <div id="stone">Stone: 0</div>
+                <div id="food">Food: 0</div>
+            </div>
+            <div id="instructions">
+                WASD: Move | E: Gather Resources | C: Craft | B: Build<br>
+                Left Click: Attack | Right Click: Use Tool<br>
+                Survive by gathering resources and building shelter!
+            </div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+    
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

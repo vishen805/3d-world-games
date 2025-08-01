@@ -1,0 +1,98 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    overflow: hidden;
+    height: 100vh;
+}
+
+#gameContainer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+#ui {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+    color: white;
+    font-size: 18px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+#survivalStats {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 2px solid #4CAF50;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+#survivalStats div {
+    margin-bottom: 5px;
+}
+
+#health { color: #ff4444; }
+#hunger { color: #ff8800; }
+#stamina { color: #44ff44; }
+
+#inventory {
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    border: 2px solid #8B4513;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+#inventoryTitle {
+    color: #ffd700;
+    margin-bottom: 8px;
+    font-size: 18px;
+}
+
+#inventory div:not(#inventoryTitle) {
+    margin-bottom: 3px;
+    color: #cccccc;
+}
+
+#instructions {
+    background: rgba(0, 0, 0, 0.6);
+    padding: 10px 15px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.4;
+    max-width: 250px;
+}
+
+/* Loading screen styles */
+#loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 24px;
+    text-align: center;
+    z-index: 200;
+}
+
+.hidden {
+    display: none;
+}
