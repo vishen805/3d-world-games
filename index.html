@@ -8,7 +8,8 @@
 </head>
 <body>
     <div id="gameContainer">
-        <div id="ui">
+        <!-- Top UI -->
+        <div id="topUI">
             <div id="survivalStats">
                 <div id="health">Health: 100/100</div>
                 <div id="hunger">Hunger: 100/100</div>
@@ -19,13 +20,135 @@
                 <div id="wood">Wood: 0</div>
                 <div id="stone">Stone: 0</div>
                 <div id="food">Food: 0</div>
-            </div>
-            <div id="instructions">
-                WASD: Move | E: Gather Resources | C: Craft | B: Build<br>
-                Left Click: Attack | Right Click: Use Tool<br>
-                Survive by gathering resources and building shelter!
+                <div id="iron">Iron: 0</div>
+                <div id="leather">Leather: 0</div>
             </div>
         </div>
+
+        <!-- Center UI for crafting/building -->
+        <div id="centerUI">
+            <div id="craftingPanel" class="hidden">
+                <div id="craftingTitle">Crafting Menu</div>
+                <div class="craftingSection">
+                    <div class="craftingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Axe</div>
+                            <div class="itemRequirements">5 Wood + 2 Stone</div>
+                        </div>
+                        <button id="craftAxe" class="craftButton" disabled>Craft Axe</button>
+                    </div>
+                    <div class="craftingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Pickaxe</div>
+                            <div class="itemRequirements">3 Wood + 4 Stone</div>
+                        </div>
+                        <button id="craftPickaxe" class="craftButton" disabled>Craft Pickaxe</button>
+                    </div>
+                    <div class="craftingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Sword</div>
+                            <div class="itemRequirements">2 Wood + 3 Stone</div>
+                        </div>
+                        <button id="craftSword" class="craftButton" disabled>Craft Sword</button>
+                    </div>
+                    <div class="craftingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Bow</div>
+                            <div class="itemRequirements">4 Wood + 2 Leather</div>
+                        </div>
+                        <button id="craftBow" class="craftButton" disabled>Craft Bow</button>
+                    </div>
+                    <div class="craftingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Hammer</div>
+                            <div class="itemRequirements">3 Wood + 5 Iron</div>
+                        </div>
+                        <button id="craftHammer" class="craftButton" disabled>Craft Hammer</button>
+                    </div>
+                    <div class="craftingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Fishing Rod</div>
+                            <div class="itemRequirements">3 Wood + 1 Leather</div>
+                        </div>
+                        <button id="craftFishingRod" class="craftButton" disabled>Craft Fishing Rod</button>
+                    </div>
+                </div>
+                <button id="closeCrafting" class="closeButton">Close</button>
+            </div>
+            <div id="buildingPanel" class="hidden">
+                <div id="buildingTitle">Building Menu</div>
+                <div class="buildingSection">
+                    <div class="buildingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Basic House</div>
+                            <div class="itemRequirements">10 Wood + 5 Stone</div>
+                        </div>
+                        <button id="buildHouse" class="buildButton" disabled>Build House</button>
+                    </div>
+                    <div class="buildingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Watchtower</div>
+                            <div class="itemRequirements">15 Wood + 10 Stone</div>
+                        </div>
+                        <button id="buildWatchtower" class="buildButton" disabled>Build Watchtower</button>
+                    </div>
+                    <div class="buildingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Workshop</div>
+                            <div class="itemRequirements">20 Wood + 8 Stone + 5 Iron</div>
+                        </div>
+                        <button id="buildWorkshop" class="buildButton" disabled>Build Workshop</button>
+                    </div>
+                    <div class="buildingItem">
+                        <div class="itemInfo">
+                            <div class="itemName">Farm</div>
+                            <div class="itemRequirements">12 Wood + 3 Stone</div>
+                        </div>
+                        <button id="buildFarm" class="buildButton" disabled>Build Farm</button>
+                    </div>
+                </div>
+                <button id="closeBuilding" class="closeButton">Close</button>
+            </div>
+        </div>
+
+        <!-- Bottom UI - Minecraft-style toolbar -->
+        <div id="bottomUI">
+            <div id="toolbar">
+                <div class="toolSlot active" data-tool="hands">
+                    <div class="toolIcon">✋</div>
+                    <div class="toolName">Hands</div>
+                </div>
+                <div class="toolSlot" data-tool="axe">
+                    <div class="toolIcon">🪓</div>
+                    <div class="toolName">Axe</div>
+                </div>
+                <div class="toolSlot" data-tool="pickaxe">
+                    <div class="toolIcon">⛏️</div>
+                    <div class="toolName">Pickaxe</div>
+                </div>
+                <div class="toolSlot" data-tool="sword">
+                    <div class="toolIcon">⚔️</div>
+                    <div class="toolName">Sword</div>
+                </div>
+                <div class="toolSlot" data-tool="bow">
+                    <div class="toolIcon">🏹</div>
+                    <div class="toolName">Bow</div>
+                </div>
+                <div class="toolSlot" data-tool="hammer">
+                    <div class="toolIcon">🔨</div>
+                    <div class="toolName">Hammer</div>
+                </div>
+                <div class="toolSlot" data-tool="fishingrod">
+                    <div class="toolIcon">🎣</div>
+                    <div class="toolName">Fishing Rod</div>
+                </div>
+            </div>
+            <div id="instructions">
+                WASD: Move | E: Gather | C: Craft | B: Build | 1-7: Select Tool<br>
+                Left Click: Attack | Right Click: Use Tool | Mouse: Look Around
+            </div>
+        </div>
+
         <canvas id="gameCanvas"></canvas>
     </div>
     

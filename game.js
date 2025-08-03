@@ -20,7 +20,9 @@ let playerStats = {
 let inventory = {
     wood: 0,
     stone: 0,
-    food: 0
+    food: 0,
+    iron: 0,
+    leather: 0
 };
 
 // Game settings
@@ -38,10 +40,30 @@ let isNight = false;
 // Tools and equipment
 let currentTool = 'hands';
 let tools = {
-    hands: { damage: 1, gatherSpeed: 1 },
-    axe: { damage: 3, gatherSpeed: 2 },
-    pickaxe: { damage: 2, gatherSpeed: 3 },
-    sword: { damage: 5, gatherSpeed: 0.5 }
+    hands: { damage: 1, gatherSpeed: 1, unlocked: true },
+    axe: { damage: 3, gatherSpeed: 2, unlocked: false },
+    pickaxe: { damage: 2, gatherSpeed: 3, unlocked: false },
+    sword: { damage: 5, gatherSpeed: 0.5, unlocked: false },
+    bow: { damage: 4, gatherSpeed: 0.5, unlocked: false, range: 15 },
+    hammer: { damage: 6, gatherSpeed: 1, unlocked: false, buildBonus: true },
+    fishingrod: { damage: 1, gatherSpeed: 1, unlocked: false, fishing: true }
+};
+
+// Building placement
+let buildingMode = false;
+let buildingType = null;
+let buildingPreview = null;
+
+// Animation states
+let playerAnimationState = 'idle';
+let animationTimer = 0;
+
+// Food types
+let foodTypes = {
+    berries: { hunger: 20, health: 5 },
+    fish: { hunger: 35, health: 10 },
+    meat: { hunger: 50, health: 15 },
+    bread: { hunger: 40, health: 8 }
 };
 
 // Initialize the game
@@ -275,7 +297,7 @@ function createPlayer() {
 
 function createResources() {
     // Create berry bushes for food
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 15; i++) {
         const bush = createBerryBush();
         let x, z;
         let validPosition = false;
@@ -297,16 +319,147 @@ function createResources() {
         
         bush.position.set(x, 0, z);
         scene.add(bush);
-        gameObjects.push({ 
-            mesh: bush, 
-            type: 'bush', 
+        gameObjects.push({
+            mesh: bush,
+            type: 'bush',
             position: bush.position,
             health: 1,
             maxHealth: 1,
             resource: 'food',
-            amount: 2
+            amount: 2,
+            foodType: 'berries'
         });
     }
+
+    // Create iron deposits
+    for (let i = 0; i < 10; i++) {
+        const ironDeposit = createIronDeposit();
+        let x, z;
+        let validPosition = false;
+        
+        while (!validPosition) {
+            x = (Math.random() - 0.5) * WORLD_SIZE * 0.6;
+            z = (Math.random() - 0.5) * WORLD_SIZE * 0.6;
+            validPosition = true;
+            
+            for (let obj of gameObjects) {
+                const distance = Math.sqrt((x - obj.position.x) ** 2 + (z - obj.position.z) ** 2);
+                if (distance < 10) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        }
+        
+        ironDeposit.position.set(x, 0, z);
+        scene.add(ironDeposit);
+        gameObjects.push({
+            mesh: ironDeposit,
+            type: 'iron',
+            position: ironDeposit.position,
+            health: 6,
+            maxHealth: 6,
+            resource: 'iron',
+            amount: 3
+        });
+    }
+
+    // Create animals for leather
+    for (let i = 0; i < 8; i++) {
+        const animal = createAnimal();
+        let x, z;
+        let validPosition = false;
+        
+        while (!validPosition) {
+            x = (Math.random() - 0.5) * WORLD_SIZE * 0.5;
+            z = (Math.random() - 0.5) * WORLD_SIZE * 0.5;
+            validPosition = true;
+            
+            for (let obj of gameObjects) {
+                const distance = Math.sqrt((x - obj.position.x) ** 2 + (z - obj.position.z) ** 2);
+                if (distance < 12) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        }
+        
+        animal.position.set(x, 0, z);
+        animal.userData = {
+            health: 15,
+            maxHealth: 15,
+            speed: 0.02,
+            direction: Math.random() * Math.PI * 2,
+            changeDirectionTimer: 0,
+            type: 'animal'
+        };
+        scene.add(animal);
+        enemies.push(animal); // Add to enemies array for AI behavior
+    }
+}
+
+function createIronDeposit() {
+    const ironGroup = new THREE.Group();
+    
+    // Iron ore
+    const ironGeometry = new THREE.OctahedronGeometry(2, 0);
+    const ironMaterial = new THREE.MeshLambertMaterial({ color: 0x708090 });
+    const iron = new THREE.Mesh(ironGeometry, ironMaterial);
+    iron.position.y = 2;
+    iron.castShadow = true;
+    ironGroup.add(iron);
+    
+    // Add some sparkle effect
+    for (let i = 0; i < 3; i++) {
+        const sparkleGeometry = new THREE.SphereGeometry(0.1, 6, 6);
+        const sparkleMaterial = new THREE.MeshLambertMaterial({ color: 0xC0C0C0 });
+        const sparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
+        sparkle.position.set(
+            (Math.random() - 0.5) * 3,
+            1 + Math.random() * 2,
+            (Math.random() - 0.5) * 3
+        );
+        ironGroup.add(sparkle);
+    }
+    
+    return ironGroup;
+}
+
+function createAnimal() {
+    const animalGroup = new THREE.Group();
+    
+    // Animal body (deer-like)
+    const bodyGeometry = new THREE.BoxGeometry(1.5, 1, 2);
+    const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 1.5;
+    body.castShadow = true;
+    animalGroup.add(body);
+    
+    // Animal head
+    const headGeometry = new THREE.BoxGeometry(0.8, 0.8, 1);
+    const headMaterial = new THREE.MeshLambertMaterial({ color: 0xA0522D });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.set(0, 1.8, 1.2);
+    head.castShadow = true;
+    animalGroup.add(head);
+    
+    // Legs
+    const legGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1, 8);
+    const legMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+    
+    for (let i = 0; i < 4; i++) {
+        const leg = new THREE.Mesh(legGeometry, legMaterial);
+        leg.position.set(
+            i < 2 ? -0.5 : 0.5,
+            0.5,
+            i % 2 === 0 ? 0.7 : -0.7
+        );
+        leg.castShadow = true;
+        animalGroup.add(leg);
+    }
+    
+    return animalGroup;
 }
 
 function createBerryBush() {
@@ -435,9 +588,33 @@ function setupControls() {
         if (event.code === 'KeyE') {
             gatherResource();
         } else if (event.code === 'KeyC') {
-            openCraftingMenu();
+            if (buildingMode) {
+                exitBuildingMode();
+            } else {
+                openCraftingMenu();
+            }
         } else if (event.code === 'KeyB') {
-            buildStructure();
+            if (buildingMode) {
+                exitBuildingMode();
+            } else {
+                buildStructure();
+            }
+        } else if (event.code === 'Escape') {
+            if (buildingMode) {
+                exitBuildingMode();
+            } else {
+                closeCraftingMenu();
+                closeBuildingMenu();
+            }
+        }
+        
+        // Tool selection (1-7 keys)
+        const toolKeys = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7'];
+        const toolNames = ['hands', 'axe', 'pickaxe', 'sword', 'bow', 'hammer', 'fishingrod'];
+        
+        const keyIndex = toolKeys.indexOf(event.code);
+        if (keyIndex !== -1 && tools[toolNames[keyIndex]].unlocked) {
+            selectTool(toolNames[keyIndex]);
         }
     });
 
@@ -445,18 +622,56 @@ function setupControls() {
         keys[event.code] = false;
     });
     
-    // Mouse controls for combat
+    // Mouse controls for combat and building
     document.addEventListener('mousedown', (event) => {
-        if (event.button === 0) { // Left click - attack
-            attackWithTool();
-        } else if (event.button === 2) { // Right click - use tool
-            useTool();
+        if (buildingMode) {
+            if (event.button === 0) { // Left click - place building
+                placeBuildingAtCursor();
+            } else if (event.button === 2) { // Right click - cancel building
+                exitBuildingMode();
+            }
+        } else {
+            if (event.button === 0) { // Left click - attack
+                attackWithTool();
+            } else if (event.button === 2) { // Right click - use tool
+                useTool();
+            }
+        }
+    });
+    
+    // Mouse movement for building preview
+    document.addEventListener('mousemove', (event) => {
+        if (buildingMode && buildingPreview) {
+            updateBuildingPreview(event);
         }
     });
     
     // Prevent context menu on right click
     document.addEventListener('contextmenu', (event) => {
         event.preventDefault();
+    });
+}
+
+function selectTool(toolName) {
+    if (tools[toolName].unlocked) {
+        currentTool = toolName;
+        updateToolbarUI();
+        updateCurrentToolUI();
+    }
+}
+
+function updateToolbarUI() {
+    document.querySelectorAll('.toolSlot').forEach(slot => {
+        slot.classList.remove('active');
+        const toolName = slot.dataset.tool;
+        if (toolName === currentTool) {
+            slot.classList.add('active');
+        }
+        if (!tools[toolName].unlocked) {
+            slot.classList.add('disabled');
+        } else {
+            slot.classList.remove('disabled');
+        }
     });
 }
 
@@ -502,7 +717,22 @@ function updatePlayer() {
         // Face movement direction
         const angle = Math.atan2(moveVector.x, moveVector.z);
         player.rotation.y = angle;
+        
+        // Set walking animation
+        if (playerAnimationState !== 'walking') {
+            playerAnimationState = 'walking';
+            animationTimer = 0;
+        }
+    } else {
+        // Set idle animation
+        if (playerAnimationState !== 'idle') {
+            playerAnimationState = 'idle';
+            animationTimer = 0;
+        }
     }
+    
+    // Update player animations
+    updatePlayerAnimation();
     
     // Regenerate stamina when not moving
     if (!isMoving && playerStats.stamina < playerStats.maxStamina) {
@@ -513,6 +743,48 @@ function updatePlayer() {
     camera.position.x = player.position.x;
     camera.position.z = player.position.z + 25;
     camera.lookAt(player.position);
+}
+
+function updatePlayerAnimation() {
+    animationTimer += 0.1;
+    
+    if (playerAnimationState === 'walking') {
+        // Animate arms swinging
+        const leftArm = player.children.find(child => child.position.x < 0 && child.position.y > 1.5);
+        const rightArm = player.children.find(child => child.position.x > 0 && child.position.y > 1.5);
+        
+        if (leftArm && rightArm) {
+            leftArm.rotation.x = Math.sin(animationTimer * 4) * 0.5;
+            rightArm.rotation.x = -Math.sin(animationTimer * 4) * 0.5;
+        }
+    } else if (playerAnimationState === 'gathering') {
+        // Animate gathering motion
+        const rightArm = player.children.find(child => child.position.x > 0 && child.position.y > 1.5);
+        if (rightArm) {
+            rightArm.rotation.x = Math.sin(animationTimer * 8) * 0.8 - 0.5;
+        }
+    } else if (playerAnimationState === 'attacking') {
+        // Animate attacking motion
+        const rightArm = player.children.find(child => child.position.x > 0 && child.position.y > 1.5);
+        if (rightArm) {
+            rightArm.rotation.x = Math.sin(animationTimer * 10) * 1.2 - 0.3;
+        }
+        
+        // Return to idle after animation
+        if (animationTimer > 0.5) {
+            playerAnimationState = 'idle';
+            animationTimer = 0;
+        }
+    } else {
+        // Idle - reset arm positions
+        const leftArm = player.children.find(child => child.position.x < 0 && child.position.y > 1.5);
+        const rightArm = player.children.find(child => child.position.x > 0 && child.position.y > 1.5);
+        
+        if (leftArm && rightArm) {
+            leftArm.rotation.x = 0;
+            rightArm.rotation.x = 0;
+        }
+    }
 }
 
 function gatherResource() {
@@ -571,57 +843,199 @@ function useTool() {
 }
 
 function openCraftingMenu() {
-    // Simple crafting system
+    const craftingPanel = document.getElementById('craftingPanel');
+    craftingPanel.classList.remove('hidden');
+    updateCraftingUI();
+}
+
+function closeCraftingMenu() {
+    const craftingPanel = document.getElementById('craftingPanel');
+    craftingPanel.classList.add('hidden');
+}
+
+function updateCraftingUI() {
+    // Update Axe button
+    const craftAxeBtn = document.getElementById('craftAxe');
+    const axeRequirements = document.querySelector('#craftAxe').parentElement.querySelector('.itemRequirements');
     if (inventory.wood >= 5 && inventory.stone >= 2) {
-        if (confirm('Craft Axe? (5 Wood + 2 Stone)')) {
-            inventory.wood -= 5;
-            inventory.stone -= 2;
-            currentTool = 'axe';
-            updateInventoryUI();
-            alert('Axe crafted! You can now gather wood faster.');
-        }
-    } else if (inventory.wood >= 3 && inventory.stone >= 4) {
-        if (confirm('Craft Pickaxe? (3 Wood + 4 Stone)')) {
-            inventory.wood -= 3;
-            inventory.stone -= 4;
-            currentTool = 'pickaxe';
-            updateInventoryUI();
-            alert('Pickaxe crafted! You can now gather stone faster.');
-        }
-    } else if (inventory.wood >= 2 && inventory.stone >= 3) {
-        if (confirm('Craft Sword? (2 Wood + 3 Stone)')) {
-            inventory.wood -= 2;
-            inventory.stone -= 3;
-            currentTool = 'sword';
-            updateInventoryUI();
-            alert('Sword crafted! You can now fight enemies more effectively.');
-        }
+        craftAxeBtn.disabled = false;
+        axeRequirements.className = 'itemRequirements sufficient';
     } else {
-        alert('Not enough resources to craft anything!');
+        craftAxeBtn.disabled = true;
+        axeRequirements.className = 'itemRequirements insufficient';
+    }
+
+    // Update Pickaxe button
+    const craftPickaxeBtn = document.getElementById('craftPickaxe');
+    const pickaxeRequirements = document.querySelector('#craftPickaxe').parentElement.querySelector('.itemRequirements');
+    if (inventory.wood >= 3 && inventory.stone >= 4) {
+        craftPickaxeBtn.disabled = false;
+        pickaxeRequirements.className = 'itemRequirements sufficient';
+    } else {
+        craftPickaxeBtn.disabled = true;
+        pickaxeRequirements.className = 'itemRequirements insufficient';
+    }
+
+    // Update Sword button
+    const craftSwordBtn = document.getElementById('craftSword');
+    const swordRequirements = document.querySelector('#craftSword').parentElement.querySelector('.itemRequirements');
+    if (inventory.wood >= 2 && inventory.stone >= 3) {
+        craftSwordBtn.disabled = false;
+        swordRequirements.className = 'itemRequirements sufficient';
+    } else {
+        craftSwordBtn.disabled = true;
+        swordRequirements.className = 'itemRequirements insufficient';
+    }
+
+    // Update Bow button
+    const craftBowBtn = document.getElementById('craftBow');
+    if (craftBowBtn) {
+        const bowRequirements = document.querySelector('#craftBow').parentElement.querySelector('.itemRequirements');
+        if (inventory.wood >= 4 && inventory.leather >= 2) {
+            craftBowBtn.disabled = false;
+            bowRequirements.className = 'itemRequirements sufficient';
+        } else {
+            craftBowBtn.disabled = true;
+            bowRequirements.className = 'itemRequirements insufficient';
+        }
+    }
+
+    // Update Hammer button
+    const craftHammerBtn = document.getElementById('craftHammer');
+    if (craftHammerBtn) {
+        const hammerRequirements = document.querySelector('#craftHammer').parentElement.querySelector('.itemRequirements');
+        if (inventory.wood >= 3 && inventory.iron >= 5) {
+            craftHammerBtn.disabled = false;
+            hammerRequirements.className = 'itemRequirements sufficient';
+        } else {
+            craftHammerBtn.disabled = true;
+            hammerRequirements.className = 'itemRequirements insufficient';
+        }
+    }
+
+    // Update Fishing Rod button
+    const craftFishingRodBtn = document.getElementById('craftFishingRod');
+    if (craftFishingRodBtn) {
+        const fishingRodRequirements = document.querySelector('#craftFishingRod').parentElement.querySelector('.itemRequirements');
+        if (inventory.wood >= 3 && inventory.leather >= 1) {
+            craftFishingRodBtn.disabled = false;
+            fishingRodRequirements.className = 'itemRequirements sufficient';
+        } else {
+            craftFishingRodBtn.disabled = true;
+            fishingRodRequirements.className = 'itemRequirements insufficient';
+        }
     }
 }
 
+function craftItem(itemType) {
+    switch(itemType) {
+        case 'axe':
+            if (inventory.wood >= 5 && inventory.stone >= 2) {
+                inventory.wood -= 5;
+                inventory.stone -= 2;
+                currentTool = 'axe';
+                updateInventoryUI();
+                updateCraftingUI();
+                updateCurrentToolUI();
+                showCraftingMessage('Axe crafted! You can now gather wood faster.');
+            }
+            break;
+        case 'pickaxe':
+            if (inventory.wood >= 3 && inventory.stone >= 4) {
+                inventory.wood -= 3;
+                inventory.stone -= 4;
+                currentTool = 'pickaxe';
+                updateInventoryUI();
+                updateCraftingUI();
+                updateCurrentToolUI();
+                showCraftingMessage('Pickaxe crafted! You can now gather stone faster.');
+            }
+            break;
+        case 'sword':
+            if (inventory.wood >= 2 && inventory.stone >= 3) {
+                inventory.wood -= 2;
+                inventory.stone -= 3;
+                currentTool = 'sword';
+                updateInventoryUI();
+                updateCraftingUI();
+                updateCurrentToolUI();
+                showCraftingMessage('Sword crafted! You can now fight enemies more effectively.');
+            }
+            break;
+    }
+}
+
+function showCraftingMessage(message) {
+    // Create a temporary message element
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = `
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(76, 175, 80, 0.9);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        font-weight: bold;
+        z-index: 200;
+        border: 2px solid #4CAF50;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    `;
+    messageDiv.textContent = message;
+    document.body.appendChild(messageDiv);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        document.body.removeChild(messageDiv);
+    }, 3000);
+}
+
 function buildStructure() {
+    const buildingPanel = document.getElementById('buildingPanel');
+    buildingPanel.classList.remove('hidden');
+    updateBuildingUI();
+}
+
+function closeBuildingMenu() {
+    const buildingPanel = document.getElementById('buildingPanel');
+    buildingPanel.classList.add('hidden');
+}
+
+function updateBuildingUI() {
+    // Update House button
+    const buildHouseBtn = document.getElementById('buildHouse');
+    const houseRequirements = document.querySelector('#buildHouse').parentElement.querySelector('.itemRequirements');
     if (inventory.wood >= 10 && inventory.stone >= 5) {
-        if (confirm('Build Shelter? (10 Wood + 5 Stone)')) {
-            inventory.wood -= 10;
-            inventory.stone -= 5;
-            
-            // Create a simple shelter near player
-            const shelter = createShelter();
-            shelter.position.set(
-                player.position.x + 8,
-                0,
-                player.position.z
-            );
-            scene.add(shelter);
-            buildings.push(shelter);
-            
-            updateInventoryUI();
-            alert('Shelter built! It provides protection during the night.');
-        }
+        buildHouseBtn.disabled = false;
+        houseRequirements.className = 'itemRequirements sufficient';
     } else {
-        alert('Need 10 Wood and 5 Stone to build a shelter!');
+        buildHouseBtn.disabled = true;
+        houseRequirements.className = 'itemRequirements insufficient';
+    }
+}
+
+function buildItem(itemType) {
+    switch(itemType) {
+        case 'house':
+            if (inventory.wood >= 10 && inventory.stone >= 5) {
+                inventory.wood -= 10;
+                inventory.stone -= 5;
+                
+                // Create a simple shelter near player
+                const shelter = createShelter();
+                shelter.position.set(
+                    player.position.x + 8,
+                    0,
+                    player.position.z
+                );
+                scene.add(shelter);
+                buildings.push(shelter);
+                
+                updateInventoryUI();
+                updateBuildingUI();
+                showCraftingMessage('House built! It provides protection during the night.');
+            }
+            break;
     }
 }
 
@@ -800,6 +1214,33 @@ function updateInventoryUI() {
     document.getElementById('wood').textContent = `Wood: ${inventory.wood}`;
     document.getElementById('stone').textContent = `Stone: ${inventory.stone}`;
     document.getElementById('food').textContent = `Food: ${inventory.food}`;
+    
+    // Update current tool display
+    updateCurrentToolUI();
+    
+    // Update crafting and building UIs if they're open
+    const craftingPanel = document.getElementById('craftingPanel');
+    const buildingPanel = document.getElementById('buildingPanel');
+    
+    if (!craftingPanel.classList.contains('hidden')) {
+        updateCraftingUI();
+    }
+    
+    if (!buildingPanel.classList.contains('hidden')) {
+        updateBuildingUI();
+    }
+}
+
+function updateCurrentToolUI() {
+    const currentToolElement = document.getElementById('currentTool');
+    if (currentToolElement) {
+        const toolName = currentTool.charAt(0).toUpperCase() + currentTool.slice(1);
+        currentToolElement.textContent = `Current Tool: ${toolName}`;
+        
+        // Add tool-specific styling
+        currentToolElement.className = 'current-tool';
+        currentToolElement.classList.add(`tool-${currentTool}`);
+    }
 }
 
 function animate() {
@@ -820,5 +1261,453 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Add event listeners for UI buttons
+function setupUIEventListeners() {
+    // Crafting panel event listeners
+    document.getElementById('craftAxe').addEventListener('click', () => craftItem('axe'));
+    document.getElementById('craftPickaxe').addEventListener('click', () => craftItem('pickaxe'));
+    document.getElementById('craftSword').addEventListener('click', () => craftItem('sword'));
+    document.getElementById('closeCrafting').addEventListener('click', closeCraftingMenu);
+    
+    // Building panel event listeners
+    document.getElementById('buildHouse').addEventListener('click', () => buildItem('house'));
+    document.getElementById('closeBuilding').addEventListener('click', closeBuildingMenu);
+    
+    // Close panels when clicking outside
+    document.addEventListener('click', (event) => {
+        const craftingPanel = document.getElementById('craftingPanel');
+        const buildingPanel = document.getElementById('buildingPanel');
+        
+        if (!craftingPanel.classList.contains('hidden') &&
+            !craftingPanel.contains(event.target) &&
+            event.target.id !== 'craftingPanel') {
+            closeCraftingMenu();
+        }
+        
+        if (!buildingPanel.classList.contains('hidden') &&
+            !buildingPanel.contains(event.target) &&
+            event.target.id !== 'buildingPanel') {
+            closeBuildingMenu();
+        }
+    });
+}
+
+// Enhanced crafting function with new tools
+function craftItem(itemType) {
+    switch(itemType) {
+        case 'axe':
+            if (inventory.wood >= 5 && inventory.stone >= 2) {
+                inventory.wood -= 5;
+                inventory.stone -= 2;
+                tools.axe.unlocked = true;
+                currentTool = 'axe';
+                updateInventoryUI();
+                updateCraftingUI();
+                showCraftingMessage('Axe crafted! You can now gather wood faster.');
+            }
+            break;
+        case 'pickaxe':
+            if (inventory.wood >= 3 && inventory.stone >= 4) {
+                inventory.wood -= 3;
+                inventory.stone -= 4;
+                tools.pickaxe.unlocked = true;
+                currentTool = 'pickaxe';
+                updateInventoryUI();
+                updateCraftingUI();
+                showCraftingMessage('Pickaxe crafted! You can now gather stone faster.');
+            }
+            break;
+        case 'sword':
+            if (inventory.wood >= 2 && inventory.stone >= 3) {
+                inventory.wood -= 2;
+                inventory.stone -= 3;
+                tools.sword.unlocked = true;
+                currentTool = 'sword';
+                updateInventoryUI();
+                updateCraftingUI();
+                showCraftingMessage('Sword crafted! You can now fight enemies more effectively.');
+            }
+            break;
+        case 'bow':
+            if (inventory.wood >= 4 && inventory.leather >= 2) {
+                inventory.wood -= 4;
+                inventory.leather -= 2;
+                tools.bow.unlocked = true;
+                currentTool = 'bow';
+                updateInventoryUI();
+                updateCraftingUI();
+                showCraftingMessage('Bow crafted! You can now attack from a distance.');
+            }
+            break;
+        case 'hammer':
+            if (inventory.wood >= 3 && inventory.iron >= 5) {
+                inventory.wood -= 3;
+                inventory.iron -= 5;
+                tools.hammer.unlocked = true;
+                currentTool = 'hammer';
+                updateInventoryUI();
+                updateCraftingUI();
+                showCraftingMessage('Hammer crafted! Perfect for building and combat.');
+            }
+            break;
+        case 'fishingrod':
+            if (inventory.wood >= 3 && inventory.leather >= 1) {
+                inventory.wood -= 3;
+                inventory.leather -= 1;
+                tools.fishingrod.unlocked = true;
+                currentTool = 'fishingrod';
+                updateInventoryUI();
+                updateCraftingUI();
+                showCraftingMessage('Fishing Rod crafted! You can now catch fish.');
+            }
+            break;
+    }
+}
+
+// Enhanced building UI update
+function updateBuildingUI() {
+    // Update House button
+    const buildHouseBtn = document.getElementById('buildHouse');
+    const houseRequirements = document.querySelector('#buildHouse').parentElement.querySelector('.itemRequirements');
+    if (inventory.wood >= 10 && inventory.stone >= 5) {
+        buildHouseBtn.disabled = false;
+        houseRequirements.className = 'itemRequirements sufficient';
+    } else {
+        buildHouseBtn.disabled = true;
+        houseRequirements.className = 'itemRequirements insufficient';
+    }
+
+    // Update Watchtower button
+    const buildWatchtowerBtn = document.getElementById('buildWatchtower');
+    if (buildWatchtowerBtn) {
+        const watchtowerRequirements = document.querySelector('#buildWatchtower').parentElement.querySelector('.itemRequirements');
+        if (inventory.wood >= 15 && inventory.stone >= 10) {
+            buildWatchtowerBtn.disabled = false;
+            watchtowerRequirements.className = 'itemRequirements sufficient';
+        } else {
+            buildWatchtowerBtn.disabled = true;
+            watchtowerRequirements.className = 'itemRequirements insufficient';
+        }
+    }
+
+    // Update Workshop button
+    const buildWorkshopBtn = document.getElementById('buildWorkshop');
+    if (buildWorkshopBtn) {
+        const workshopRequirements = document.querySelector('#buildWorkshop').parentElement.querySelector('.itemRequirements');
+        if (inventory.wood >= 20 && inventory.stone >= 8 && inventory.iron >= 5) {
+            buildWorkshopBtn.disabled = false;
+            workshopRequirements.className = 'itemRequirements sufficient';
+        } else {
+            buildWorkshopBtn.disabled = true;
+            workshopRequirements.className = 'itemRequirements insufficient';
+        }
+    }
+
+    // Update Farm button
+    const buildFarmBtn = document.getElementById('buildFarm');
+    if (buildFarmBtn) {
+        const farmRequirements = document.querySelector('#buildFarm').parentElement.querySelector('.itemRequirements');
+        if (inventory.wood >= 12 && inventory.stone >= 3) {
+            buildFarmBtn.disabled = false;
+            farmRequirements.className = 'itemRequirements sufficient';
+        } else {
+            buildFarmBtn.disabled = true;
+            farmRequirements.className = 'itemRequirements insufficient';
+        }
+    }
+}
+
+// Building placement system
+function startBuildingMode(buildingTypeName) {
+    buildingMode = true;
+    buildingType = buildingTypeName;
+    closeBuildingMenu();
+    
+    // Create preview building
+    buildingPreview = createBuildingPreview(buildingTypeName);
+    scene.add(buildingPreview);
+    
+    showCraftingMessage(`Building mode: ${buildingTypeName}. Left click to place, right click to cancel.`);
+}
+
+function createBuildingPreview(buildingTypeName) {
+    let preview;
+    
+    switch(buildingTypeName) {
+        case 'house':
+            preview = createShelter();
+            break;
+        case 'watchtower':
+            preview = createWatchtower();
+            break;
+        case 'workshop':
+            preview = createWorkshop();
+            break;
+        case 'farm':
+            preview = createFarm();
+            break;
+        default:
+            preview = createShelter();
+    }
+    
+    // Make preview semi-transparent with blue outline
+    preview.traverse((child) => {
+        if (child.isMesh) {
+            child.material = child.material.clone();
+            child.material.transparent = true;
+            child.material.opacity = 0.5;
+            child.material.color.setHex(0x4169E1); // Blue color
+        }
+    });
+    
+    return preview;
+}
+
+function updateBuildingPreview(event) {
+    if (!buildingPreview) return;
+    
+    // Convert mouse position to world coordinates
+    const mouse = new THREE.Vector2();
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+    
+    // Create a ground plane for intersection
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const intersectPoint = new THREE.Vector3();
+    raycaster.ray.intersectPlane(groundPlane, intersectPoint);
+    
+    if (intersectPoint) {
+        buildingPreview.position.set(intersectPoint.x, 0, intersectPoint.z);
+    }
+}
+
+function placeBuildingAtCursor() {
+    if (!buildingPreview || !buildingType) return;
+    
+    const buildingCosts = {
+        house: { wood: 10, stone: 5 },
+        watchtower: { wood: 15, stone: 10 },
+        workshop: { wood: 20, stone: 8, iron: 5 },
+        farm: { wood: 12, stone: 3 }
+    };
+    
+    const cost = buildingCosts[buildingType];
+    let canBuild = true;
+    
+    // Check if player has enough resources
+    for (const [resource, amount] of Object.entries(cost)) {
+        if (inventory[resource] < amount) {
+            canBuild = false;
+            break;
+        }
+    }
+    
+    if (canBuild) {
+        // Deduct resources
+        for (const [resource, amount] of Object.entries(cost)) {
+            inventory[resource] -= amount;
+        }
+        
+        // Create actual building
+        let building;
+        switch(buildingType) {
+            case 'house':
+                building = createShelter();
+                break;
+            case 'watchtower':
+                building = createWatchtower();
+                break;
+            case 'workshop':
+                building = createWorkshop();
+                break;
+            case 'farm':
+                building = createFarm();
+                break;
+        }
+        
+        building.position.copy(buildingPreview.position);
+        scene.add(building);
+        buildings.push(building);
+        
+        updateInventoryUI();
+        showCraftingMessage(`${buildingType} built successfully!`);
+        exitBuildingMode();
+    } else {
+        showCraftingMessage('Not enough resources!');
+    }
+}
+
+function exitBuildingMode() {
+    buildingMode = false;
+    buildingType = null;
+    
+    if (buildingPreview) {
+        scene.remove(buildingPreview);
+        buildingPreview = null;
+    }
+}
+
+// New building types
+function createWatchtower() {
+    const towerGroup = new THREE.Group();
+    
+    // Tower base
+    const baseGeometry = new THREE.CylinderGeometry(3, 4, 2, 8);
+    const baseMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.position.y = 1;
+    base.castShadow = true;
+    towerGroup.add(base);
+    
+    // Tower shaft
+    const shaftGeometry = new THREE.CylinderGeometry(2, 2.5, 12, 8);
+    const shaftMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+    shaft.position.y = 8;
+    shaft.castShadow = true;
+    towerGroup.add(shaft);
+    
+    // Tower top
+    const topGeometry = new THREE.CylinderGeometry(3, 2, 2, 8);
+    const topMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+    const top = new THREE.Mesh(topGeometry, topMaterial);
+    top.position.y = 15;
+    top.castShadow = true;
+    towerGroup.add(top);
+    
+    return towerGroup;
+}
+
+function createWorkshop() {
+    const workshopGroup = new THREE.Group();
+    
+    // Workshop base
+    const baseGeometry = new THREE.BoxGeometry(12, 5, 8);
+    const baseMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.position.y = 2.5;
+    base.castShadow = true;
+    workshopGroup.add(base);
+    
+    // Roof
+    const roofGeometry = new THREE.ConeGeometry(8, 3, 4);
+    const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+    roof.position.y = 6.5;
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true;
+    workshopGroup.add(roof);
+    
+    // Chimney
+    const chimneyGeometry = new THREE.BoxGeometry(1, 4, 1);
+    const chimneyMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+    const chimney = new THREE.Mesh(chimneyGeometry, chimneyMaterial);
+    chimney.position.set(3, 7, 2);
+    chimney.castShadow = true;
+    workshopGroup.add(chimney);
+    
+    return workshopGroup;
+}
+
+function createFarm() {
+    const farmGroup = new THREE.Group();
+    
+    // Farm fence
+    for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 6; j++) {
+            if (i === 0 || i === 7 || j === 0 || j === 5) {
+                const fenceGeometry = new THREE.BoxGeometry(0.2, 2, 0.2);
+                const fenceMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                const fence = new THREE.Mesh(fenceGeometry, fenceMaterial);
+                fence.position.set(i * 2 - 7, 1, j * 2 - 5);
+                fence.castShadow = true;
+                farmGroup.add(fence);
+            }
+        }
+    }
+    
+    // Crops
+    for (let i = 1; i < 7; i++) {
+        for (let j = 1; j < 5; j++) {
+            const cropGeometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+            const cropMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const crop = new THREE.Mesh(cropGeometry, cropMaterial);
+            crop.position.set(i * 2 - 7, 0.5, j * 2 - 5);
+            crop.castShadow = true;
+            farmGroup.add(crop);
+        }
+    }
+    
+    return farmGroup;
+}
+
+// Enhanced setupUIEventListeners function
+function setupUIEventListeners() {
+    // Crafting panel event listeners
+    document.getElementById('craftAxe').addEventListener('click', () => craftItem('axe'));
+    document.getElementById('craftPickaxe').addEventListener('click', () => craftItem('pickaxe'));
+    document.getElementById('craftSword').addEventListener('click', () => craftItem('sword'));
+    
+    // New tool crafting listeners
+    const craftBowBtn = document.getElementById('craftBow');
+    if (craftBowBtn) craftBowBtn.addEventListener('click', () => craftItem('bow'));
+    
+    const craftHammerBtn = document.getElementById('craftHammer');
+    if (craftHammerBtn) craftHammerBtn.addEventListener('click', () => craftItem('hammer'));
+    
+    const craftFishingRodBtn = document.getElementById('craftFishingRod');
+    if (craftFishingRodBtn) craftFishingRodBtn.addEventListener('click', () => craftItem('fishingrod'));
+    
+    document.getElementById('closeCrafting').addEventListener('click', closeCraftingMenu);
+    
+    // Building panel event listeners
+    document.getElementById('buildHouse').addEventListener('click', () => startBuildingMode('house'));
+    
+    const buildWatchtowerBtn = document.getElementById('buildWatchtower');
+    if (buildWatchtowerBtn) buildWatchtowerBtn.addEventListener('click', () => startBuildingMode('watchtower'));
+    
+    const buildWorkshopBtn = document.getElementById('buildWorkshop');
+    if (buildWorkshopBtn) buildWorkshopBtn.addEventListener('click', () => startBuildingMode('workshop'));
+    
+    const buildFarmBtn = document.getElementById('buildFarm');
+    if (buildFarmBtn) buildFarmBtn.addEventListener('click', () => startBuildingMode('farm'));
+    
+    document.getElementById('closeBuilding').addEventListener('click', closeBuildingMenu);
+    
+    // Toolbar event listeners
+    document.querySelectorAll('.toolSlot').forEach(slot => {
+        slot.addEventListener('click', () => {
+            const toolName = slot.dataset.tool;
+            if (tools[toolName].unlocked) {
+                selectTool(toolName);
+            }
+        });
+    });
+    
+    // Close panels when clicking outside
+    document.addEventListener('click', (event) => {
+        const craftingPanel = document.getElementById('craftingPanel');
+        const buildingPanel = document.getElementById('buildingPanel');
+        
+        if (!craftingPanel.classList.contains('hidden') &&
+            !craftingPanel.contains(event.target) &&
+            event.target.id !== 'craftingPanel') {
+            closeCraftingMenu();
+        }
+        
+        if (!buildingPanel.classList.contains('hidden') &&
+            !buildingPanel.contains(event.target) &&
+            event.target.id !== 'buildingPanel') {
+            closeBuildingMenu();
+        }
+    });
+}
+
 // Start the game when page loads
-window.addEventListener('load', init);
+window.addEventListener('load', () => {
+    init();
+    setupUIEventListeners();
+});
